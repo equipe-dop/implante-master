@@ -277,48 +277,59 @@
 </div>
 
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
 <script>
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
 let player = { name: '', score: 0, missions: {} };
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyDjP534hf4osXVxo6lpecfRUhwv1u4zvsU",
-  authDomain: "venda-mais-implantes-dop.firebaseapp.com",
-  databaseURL: "https://venda-mais-implantes-dop-default-rtdb.firebaseio.com",
-  projectId: "venda-mais-implantes-dop",
-  storageBucket: "venda-mais-implantes-dop.firebasestorage.app",
-  messagingSenderId: "436048009772",
-  appId: "1:436048009772:web:14fb61ec50efd69b2a4f89"
-};
+// ─────────────────────────────────────────────
+// JSONBIN CONFIG
+// ─────────────────────────────────────────────
+const JSONBIN_KEY = '$2a$10$/P2VZwW0KCd2x2WJ7K42i.7gbQNJd2js8UNvHc5a5re/WkahLVceO';
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
+let BIN_ID = ''; // Preenchido automaticamente no primeiro uso
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-function saveScore() {
-  const safeKey = player.name.replace(/[.#$\[\]/]/g, '_');
-  db.ref('ranking/' + safeKey).set({
-    name: player.name,
-    score: player.score,
-    missions: Object.keys(player.missions).length,
-    updatedAt: Date.now()
+async function getBinId() {
+  if (BIN_ID) return BIN_ID;
+  const stored = localStorage.getItem('implante_bin_id');
+  if (stored) { BIN_ID = stored; return BIN_ID; }
+  const res = await fetch(JSONBIN_BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Name': 'ImplanteMaster Ranking' },
+    body: JSON.stringify({ ranking: {} })
   });
+  const json = await res.json();
+  BIN_ID = json.metadata.id;
+  localStorage.setItem('implante_bin_id', BIN_ID);
+  console.warn('✅ Bin criado! Cole este ID fixo no código (BIN_ID):', BIN_ID);
+  return BIN_ID;
 }
 
-function getRanking() {
-  return new Promise(resolve => {
-    db.ref('ranking').orderByChild('score').once('value', snap => {
-      const data = [];
-      snap.forEach(child => data.unshift(child.val()));
-      resolve(data);
+async function saveScore() {
+  try {
+    const binId = await getBinId();
+    const safeKey = player.name.replace(/[.#$\[\]/\s]/g, '_');
+    const getRes = await fetch(`${JSONBIN_BASE}/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const current = await getRes.json();
+    const ranking = current.record?.ranking || {};
+    ranking[safeKey] = { name: player.name, score: player.score, missions: Object.keys(player.missions).length, updatedAt: Date.now() };
+    await fetch(`${JSONBIN_BASE}/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body: JSON.stringify({ ranking })
     });
-  });
+  } catch(e) { console.error('Erro ao salvar score:', e); }
+}
+
+async function getRanking() {
+  try {
+    const binId = await getBinId();
+    const res = await fetch(`${JSONBIN_BASE}/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const json = await res.json();
+    const ranking = json.record?.ranking || {};
+    return Object.values(ranking).sort((a, b) => b.score - a.score);
+  } catch(e) { console.error('Erro ao carregar ranking:', e); return []; }
 }
 
 // ─────────────────────────────────────────────
@@ -776,25 +787,6 @@ function renderRanking() {
       list.innerHTML = '<div class="empty-ranking">Nenhum jogador ainda. Seja o primeiro!</div>';
       return;
     }
-    list.innerHTML = data.map((p, i) => `
-      <div class="ranking-item ${i===0?'top1':i===1?'top2':i===2?'top3':''}">
-        <div class="ranking-pos">${medals[i] || (i+1)+'º'}</div>
-        <div style="flex:1">
-          <div class="ranking-name">${p.name}</div>
-          <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${Math.round(p.score/topScore*100)}%"></div></div>
-          <div style="font-size:12px;opacity:.6;margin-top:4px">${p.missions} missão(ões) completa(s)</div>
-        </div>
-        <div class="ranking-score">${p.score}</div>
-      </div>
-    `).join('');
-  });
-  // Live updates
-  db.ref('ranking').orderByChild('score').on('value', snap => {
-    const data = [];
-    snap.forEach(child => data.unshift(child.val()));
-    const topScore = data[0]?.score || 1;
-    const medals = ['🥇','🥈','🥉'];
-    if (data.length === 0) return;
     list.innerHTML = data.map((p, i) => `
       <div class="ranking-item ${i===0?'top1':i===1?'top2':i===2?'top3':''}">
         <div class="ranking-pos">${medals[i] || (i+1)+'º'}</div>
