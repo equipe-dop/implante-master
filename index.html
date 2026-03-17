@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImplanteMaster 🦷</title>
+<style>
+  :root {
+    --primary: #1a6b5a;
+    --primary-light: rgba(255,255,255,0.08);
+    --accent: #f59e0b;
+    --accent-light: rgba(245,158,11,0.15);
+    --danger: #ff6b6b;
+    --success: #4ade80;
+    --bg: #0d1b2e;
+    --card: #162032;
+    --text: #f0f6ff;
+    --muted: #8da5c0;
+    --border: rgba(255,255,255,0.1);
+    --dop-dark: #0a1422;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1b2e; color: var(--text); min-height: 100vh; }
+
+  /* SCREENS */
+  .screen { display: none; min-height: 100vh; padding: 20px; }
+  .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+  /* HERO */
+  #screen-home { background: linear-gradient(160deg, #071020 0%, #0d1b2e 50%, #0f2444 100%); color: white; }
+  .hero-icon { font-size: 72px; margin-bottom: 16px; filter: drop-shadow(0 4px 8px rgba(0,0,0,.3)); }
+  .hero-title { font-size: clamp(28px, 5vw, 44px); font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+  .hero-sub { font-size: 16px; opacity: .8; margin-bottom: 32px; text-align: center; max-width: 380px; }
+  .name-input-wrap { background: rgba(255,255,255,.08); border-radius: 16px; padding: 24px; width: 100%; max-width: 380px; border: 1px solid rgba(255,255,255,.15); }
+  .name-input-wrap label { display: block; font-size: 13px; opacity: .8; margin-bottom: 8px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+  .name-input-wrap input { width: 100%; padding: 14px 18px; border-radius: 12px; border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.9); font-size: 17px; font-weight: 600; color: var(--text); outline: none; transition: border .2s; }
+  .name-input-wrap input:focus { border-color: var(--accent); }
+  .btn-primary { display: block; width: 100%; margin-top: 14px; padding: 15px; background: var(--accent); color: #1a202c; font-size: 17px; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; transition: transform .1s, box-shadow .2s; letter-spacing: .3px; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,.4); }
+  .btn-primary:active { transform: scale(.97); }
+
+  /* MAP */
+  #screen-map { background: var(--bg); }
+  .map-header { text-align: center; margin-bottom: 28px; }
+  .map-header h2 { font-size: 22px; font-weight: 800; }
+  .map-header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .player-badge { background: var(--primary); color: white; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 700; margin-bottom: 20px; }
+  .missions-grid { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 480px; }
+  .mission-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: all .2s; position: relative; overflow: hidden; }
+  .mission-card:hover:not(.locked):not(.done) { border-color: var(--primary); transform: translateX(4px); box-shadow: -4px 0 0 var(--primary); }
+  .mission-card.done { border-color: var(--success); background: #f0fff4; }
+  .mission-card.locked { opacity: .5; cursor: not-allowed; }
+  .mission-card.active-next { border-color: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.4)} 50%{box-shadow:0 0 0 8px rgba(245,158,11,0)} }
+  .mission-icon { font-size: 36px; flex-shrink: 0; }
+  .mission-info { flex: 1; }
+  .mission-name { font-size: 16px; font-weight: 700; }
+  .mission-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .mission-pts { font-size: 13px; font-weight: 700; color: var(--primary); margin-top: 4px; }
+  .mission-status { font-size: 22px; flex-shrink: 0; }
+  .score-bar { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 10px 18px; margin-bottom: 20px; width: 100%; max-width: 480px; }
+  .score-label { font-size: 13px; color: var(--muted); }
+  .score-value { font-size: 22px; font-weight: 800; color: var(--primary); }
+  .btn-ranking { display: block; margin-top: 18px; padding: 12px 32px; background: var(--primary); color: white; font-size: 15px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: all .2s; }
+  .btn-ranking:hover { background: #0f4c38; }
+
+  /* MISSION SCREENS */
+  .mission-screen { max-width: 600px; width: 100%; }
+  .ms-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; background: rgba(255,255,255,0.05); padding: 16px 20px; border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.12); }
+  .ms-icon { font-size: 36px; }
+  .ms-title { font-size: 18px; font-weight: 800; }
+  .ms-subtitle { font-size: 13px; color: var(--muted); }
+  .ms-score { margin-left: auto; font-size: 20px; font-weight: 800; color: var(--primary); }
+
+  /* QUIZ */
+  .quiz-progress { display: flex; gap: 6px; margin-bottom: 20px; }
+  .quiz-dot { height: 6px; flex: 1; background: var(--border); border-radius: 3px; transition: background .3s; }
+  .quiz-dot.done { background: var(--success); }
+  .quiz-dot.current { background: var(--accent); }
+  .quiz-question { background: var(--card); border: 1.5px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 24px; margin-bottom: 16px; }
+  .quiz-q-text { font-size: 18px; font-weight: 700; line-height: 1.4; }
+  .quiz-timer { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .quiz-timer span { font-weight: 700; color: var(--danger); }
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+  .quiz-opt { padding: 14px 18px; background: rgba(255,255,255,0.04); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all .15s; text-align: left; color: var(--text); }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-light); }
+  .quiz-opt.correct { border-color: var(--success); background: #f0fff4; color: var(--success); font-weight: 700; }
+  .quiz-opt.wrong { border-color: var(--danger); background: #fff5f5; color: var(--danger); }
+  .quiz-opt:disabled { cursor: default; }
+  .quiz-feedback { margin-top: 12px; padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok { background: #f0fff4; color: var(--success); }
+  .quiz-feedback.nok { background: #fff5f5; color: var(--danger); }
+
+  /* ANATOMY */
+  .anatomy-board { background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 24px; margin-bottom: 16px; }
+  .anatomy-img { position: relative; margin: 0 auto 20px; width: 200px; height: 260px; }
+  .anatomy-svg { width: 100%; height: 100%; }
+  .anatomy-parts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .anatomy-part { padding: 12px 14px; background: var(--primary-light); border: 2px solid transparent; border-radius: 10px; font-size: 14px; cursor: pointer; transition: all .2s; }
+  .anatomy-part:hover { border-color: var(--primary); }
+  .anatomy-part.selected { border-color: var(--primary); background: var(--primary); color: white; }
+  .anatomy-part.correct { border-color: var(--success); background: #f0fff4; color: var(--success); }
+  .anatomy-part.wrong { border-color: var(--danger); background: #fff5f5; color: var(--danger); }
+  .anatomy-question { font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 16px; }
+  .anatomy-hint { font-size: 13px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  /* ROLEPLAY */
+  .roleplay-scenario { background: rgba(99,102,241,0.15); border: 1.5px solid rgba(99,102,241,0.3); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  .roleplay-patient { font-size: 15px; font-weight: 600; color: #a5b4fc; margin-bottom: 10px; }
+  .roleplay-objection { font-size: 17px; font-style: italic; color: #e0e8ff; line-height: 1.5; padding: 12px 16px; background: rgba(255,255,255,0.06); border-radius: 10px; border-left: 4px solid #6366f1; }
+  .roleplay-q { font-size: 16px; font-weight: 700; margin: 16px 0 12px; }
+  .roleplay-opts { display: flex; flex-direction: column; gap: 10px; }
+  .roleplay-opt { padding: 14px 18px; background: rgba(255,255,255,0.04); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; font-size: 14px; cursor: pointer; transition: all .15s; text-align: left; line-height: 1.5; color: var(--text); }
+  .roleplay-opt:hover:not(:disabled) { border-color: #6366f1; background: #f6f8ff; }
+  .roleplay-opt.best { border-color: var(--success); background: #f0fff4; }
+  .roleplay-opt.ok-opt { border-color: var(--accent); background: var(--accent-light); }
+  .roleplay-opt.bad { border-color: var(--danger); background: #fff5f5; }
+
+  /* FLASHCARDS */
+  .flashcard-wrap { perspective: 1000px; width: 100%; }
+  .flashcard { width: 100%; height: 200px; position: relative; transform-style: preserve-3d; transition: transform .6s; cursor: pointer; border-radius: 16px; }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+  .card-front { background: linear-gradient(135deg, var(--primary), #2d9974); color: white; }
+  .card-back { background: linear-gradient(135deg, #2c3e8c, #4338ca); color: white; transform: rotateY(180deg); }
+  .card-face p { font-size: 18px; font-weight: 700; line-height: 1.4; }
+  .card-face .card-hint { font-size: 12px; opacity: .7; margin-top: 10px; }
+  .fc-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+  .fc-btn { padding: 10px 20px; background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .fc-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .fc-btn:disabled { opacity: .3; cursor: default; }
+  .fc-counter { font-size: 14px; color: var(--muted); font-weight: 600; }
+  .fc-known { display: flex; gap: 8px; margin-top: 12px; }
+  .fc-known button { flex: 1; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; transition: all .15s; }
+  .fc-know-yes { background: #f0fff4; color: var(--success); border: 2px solid var(--success) !important; }
+  .fc-know-yes:hover { background: var(--success); color: white; }
+  .fc-know-no { background: #fff5f5; color: var(--danger); border: 2px solid var(--danger) !important; }
+  .fc-know-no:hover { background: var(--danger); color: white; }
+
+  /* RANKING */
+  #screen-ranking { background: linear-gradient(135deg, #071020 0%, #0d1b2e 100%); color: white; }
+  .ranking-title { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+  .ranking-sub { opacity: .7; font-size: 14px; margin-bottom: 24px; }
+  .ranking-list { width: 100%; max-width: 480px; }
+  .ranking-item { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,.1); border-radius: 14px; padding: 14px 18px; margin-bottom: 10px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.15); transition: all .3s; }
+  .ranking-item.top1 { background: rgba(245,158,11,.25); border-color: rgba(245,158,11,.5); }
+  .ranking-item.top2 { background: rgba(203,213,225,.15); border-color: rgba(203,213,225,.3); }
+  .ranking-item.top3 { background: rgba(205,127,50,.15); border-color: rgba(205,127,50,.3); }
+  .ranking-pos { font-size: 22px; width: 36px; text-align: center; flex-shrink: 0; }
+  .ranking-name { flex: 1; font-size: 16px; font-weight: 700; }
+  .ranking-score { font-size: 20px; font-weight: 800; }
+  .ranking-bar-wrap { margin-top: 6px; height: 4px; background: rgba(255,255,255,.2); border-radius: 2px; }
+  .ranking-bar { height: 4px; background: var(--accent); border-radius: 2px; transition: width 1s ease; }
+  .btn-back-map { margin-top: 20px; padding: 12px 28px; background: rgba(255,255,255,.15); color: white; border: 1.5px solid rgba(255,255,255,.3); border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .btn-back-map:hover { background: rgba(255,255,255,.25); }
+  .empty-ranking { text-align: center; opacity: .6; padding: 32px; font-size: 15px; }
+
+  /* RESULT */
+  .result-box { background: #162032; border: 2px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 32px 28px; text-align: center; max-width: 380px; width: 100%; color: var(--text); }
+  .result-icon { font-size: 56px; margin-bottom: 12px; }
+  .result-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .result-pts { font-size: 36px; font-weight: 900; color: var(--primary); }
+  .result-desc { font-size: 15px; color: var(--muted); margin: 10px 0 20px; line-height: 1.5; }
+  .btn-continue { padding: 14px 32px; background: var(--primary); color: white; font-size: 16px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: all .2s; }
+  .btn-continue:hover { background: #0f4c38; }
+
+  /* UTILS */
+  .btn-back { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: transparent; border: 1.5px solid rgba(255,255,255,0.15); border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 16px; color: var(--muted); transition: all .2s; align-self: flex-start; }
+  .btn-back:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-next { margin-top: 16px; width: 100%; padding: 14px; background: var(--primary); color: white; font-size: 16px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: all .2s; display: none; }
+  .btn-next.show { display: block; }
+  .btn-next:hover { background: #0f4c38; }
+  .progress-text { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="screen-home" class="screen active">
+  <img src="data:image/jpeg;base64,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" alt="DOP" style="width:140px;margin-bottom:20px;filter:drop-shadow(0 4px 16px rgba(0,0,0,.5))" />
+  <div class="hero-title">ImplanteMaster</div>
+  <div class="hero-sub">Treinamento interativo em implantes dentários — clínica e vendas</div>
+  <div style="font-size:11px;opacity:.4;margin-top:-20px;margin-bottom:20px;letter-spacing:1px;text-transform:uppercase">Desenvolvimento, Operações &amp; Performance</div>
+  <div class="name-input-wrap">
+    <label>Seu nome</label>
+    <input type="text" id="playerName" placeholder="Ex: Ana Lima" maxlength="40" />
+    <button class="btn-primary" onclick="startGame()">Jogar agora ▶</button>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="screen-map" class="screen">
+  <img src="data:image/jpeg;base64,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" alt="DOP" style="width:80px;margin-bottom:8px;opacity:.9" />
+  <div class="player-badge" id="mapPlayerName">👤 Jogador</div>
+  <div class="score-bar">
+    <div><div class="score-label">Pontuação total</div><div class="score-value" id="mapScore">0 pts</div></div>
+    <div style="text-align:right"><div class="score-label">Missões</div><div class="score-value" id="mapMissions">0 / 5</div></div>
+  </div>
+  <div class="map-header"><h2>🗺️ Mapa de Missões</h2><p>Complete todas para garantir o maior score!</p></div>
+  <div class="missions-grid" id="missionsGrid"></div>
+  <button class="btn-ranking" onclick="showScreen('screen-ranking'); renderRanking()">🏆 Ver ranking geral</button>
+</div>
+
+<!-- QUIZ -->
+<div id="screen-quiz" class="screen">
+  <div class="mission-screen">
+    <button class="btn-back" onclick="showScreen('screen-map')">← Voltar</button>
+    <div class="ms-header">
+      <div class="ms-icon">🧠</div>
+      <div><div class="ms-title">Quiz Clínico</div><div class="ms-subtitle">Responda rápido — pontos extras por velocidade!</div></div>
+      <div class="ms-score" id="quizScore">0</div>
+    </div>
+    <div class="quiz-progress" id="quizProgress"></div>
+    <div id="quizArea"></div>
+  </div>
+</div>
+
+<!-- ANATOMY -->
+<div id="screen-anatomy" class="screen">
+  <div class="mission-screen">
+    <button class="btn-back" onclick="showScreen('screen-map')">← Voltar</button>
+    <div class="ms-header">
+      <div class="ms-icon">🦴</div>
+      <div><div class="ms-title">Anatomia Interativa</div><div class="ms-subtitle">Identifique as partes do implante</div></div>
+      <div class="ms-score" id="anatomyScore">0</div>
+    </div>
+    <div id="anatomyArea"></div>
+  </div>
+</div>
+
+<!-- ROLEPLAY -->
+<div id="screen-roleplay" class="screen">
+  <div class="mission-screen">
+    <button class="btn-back" onclick="showScreen('screen-map')">← Voltar</button>
+    <div class="ms-header">
+      <div class="ms-icon">💬</div>
+      <div><div class="ms-title">Roleplay de Vendas</div><div class="ms-subtitle">Escolha a melhor resposta para o paciente</div></div>
+      <div class="ms-score" id="roleplayScore">0</div>
+    </div>
+    <div id="roleplayArea"></div>
+  </div>
+</div>
+
+<!-- FLASHCARDS -->
+<div id="screen-flash" class="screen">
+  <div class="mission-screen">
+    <button class="btn-back" onclick="showScreen('screen-map')">← Voltar</button>
+    <div class="ms-header">
+      <div class="ms-icon">📚</div>
+      <div><div class="ms-title">Flash Cards</div><div class="ms-subtitle">Toque para revelar — marque o que sabe!</div></div>
+      <div class="ms-score" id="flashScore">0</div>
+    </div>
+    <div id="flashArea"></div>
+  </div>
+</div>
+
+<!-- RESULTADO -->
+<div id="screen-result" class="screen">
+  <div class="result-box">
+    <div class="result-icon" id="resultIcon">🏆</div>
+    <div class="result-title" id="resultTitle">Missão Concluída!</div>
+    <div class="result-pts" id="resultPts">+200 pts</div>
+    <div class="result-desc" id="resultDesc"></div>
+    <button class="btn-continue" onclick="showScreen('screen-map'); renderMap()">Continuar →</button>
+  </div>
+</div>
+
+<!-- RANKING -->
+<div id="screen-ranking" class="screen">
+  <img src="data:image/jpeg;base64,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" alt="DOP" style="width:90px;margin-bottom:12px;opacity:.9" />
+  <div style="font-size:48px;margin-bottom:8px">🏆</div>
+  <div class="ranking-title">Ranking ImplanteMaster</div>
+  <div class="ranking-sub">Pontuação acumulada da equipe</div>
+  <div class="ranking-list" id="rankingList"></div>
+  <button class="btn-back-map" onclick="showScreen('screen-map')">← Voltar ao mapa</button>
+</div>
+
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let player = { name: '', score: 0, missions: {} };
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyDjP534hf4osXVxo6lpecfRUhwv1u4zvsU",
+  authDomain: "venda-mais-implantes-dop.firebaseapp.com",
+  databaseURL: "https://venda-mais-implantes-dop-default-rtdb.firebaseio.com",
+  projectId: "venda-mais-implantes-dop",
+  storageBucket: "venda-mais-implantes-dop.firebasestorage.app",
+  messagingSenderId: "436048009772",
+  appId: "1:436048009772:web:14fb61ec50efd69b2a4f89"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function saveScore() {
+  const safeKey = player.name.replace(/[.#$\[\]/]/g, '_');
+  db.ref('ranking/' + safeKey).set({
+    name: player.name,
+    score: player.score,
+    missions: Object.keys(player.missions).length,
+    updatedAt: Date.now()
+  });
+}
+
+function getRanking() {
+  return new Promise(resolve => {
+    db.ref('ranking').orderByChild('score').once('value', snap => {
+      const data = [];
+      snap.forEach(child => data.unshift(child.val()));
+      resolve(data);
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// MISSIONS CONFIG
+// ─────────────────────────────────────────────
+const MISSIONS = [
+  { id:'quiz',     icon:'🧠', name:'Quiz Clínico',         desc:'10 perguntas sobre implantes, protocolos e anatomia', pts: 300, screen:'screen-quiz' },
+  { id:'anatomy',  icon:'🦴', name:'Anatomia Interativa',  desc:'Identifique as partes do implante dentário',          pts: 200, screen:'screen-anatomy' },
+  { id:'roleplay', icon:'💬', name:'Roleplay de Vendas',   desc:'Responda objeções reais de pacientes',                pts: 250, screen:'screen-roleplay' },
+  { id:'flash',    icon:'📚', name:'Flash Cards',          desc:'Fixe termos técnicos e argumentos de venda',          pts: 150, screen:'screen-flash' },
+  { id:'ranking',  icon:'🏆', name:'Ver Ranking',          desc:'Compare sua pontuação com a equipe',                  pts: 0,   screen:'screen-ranking' },
+];
+
+// ─────────────────────────────────────────────
+// QUIZ DATA (10 questions)
+// ─────────────────────────────────────────────
+const QUIZ_QUESTIONS = [
+  { q:'Qual material é usado no corpo do implante dentário?', opts:['Alumínio','Aço inox','Titânio','Cerâmica'], correct:2, explain:'O titânio é biocompatível — o organismo não o rejeita e ele se funde ao osso (osseointegração).' },
+  { q:'Como se chama o processo de fusão do implante ao osso?', opts:['Biointegração','Osseointegração','Calcificação','Cementação'], correct:1, explain:'Osseointegração é a fusão do titânio ao osso alveolar, que leva de 3 a 6 meses.' },
+  { q:'Quanto tempo dura, em média, o processo de osseointegração?', opts:['1 semana','1 mês','3 a 6 meses','1 ano'], correct:2, explain:'O processo leva de 3 a 6 meses para que o implante se integre completamente ao osso.' },
+  { q:'Qual componente conecta a coroa ao implante?', opts:['Parafuso de fixação','Pilar (abutment)','Coroa provisória','Guia cirúrgico'], correct:1, explain:'O pilar (abutment) faz a conexão entre o implante já integrado e a coroa definitiva.' },
+  { q:'Em relação à prótese removível, o implante preserva o osso pois:', opts:['É mais barato','Estimula o osso com a mastigação','É esteticamente igual','Pode ser trocado facilmente'], correct:1, explain:'O implante transmite forças mastigatórias ao osso alveolar, evitando a reabsorção óssea.' },
+  { q:'Na jornada de vendas, o que vem ANTES de apresentar o preço?', opts:['Cronograma do tratamento','Garantias da clínica','Apresentação de valor','Comparativo com concorrentes'], correct:2, explain:'Sempre apresente o valor (o que o paciente vai ganhar) antes de mencionar o preço.' },
+  { q:'Paciente diz: "Está muito caro." Qual é o PRIMEIRO passo?', opts:['Oferecer desconto','Comparar com prótese removível','Descobrir a objeção real perguntando','Encerrar a consulta'], correct:2, explain:'Perguntar "em relação ao quê?" revela se a barreira é o valor percebido ou a forma de pagamento.' },
+  { q:'O que é carga imediata em implantodontia?', opts:['Implante só para idosos','Dente provisório instalado no mesmo dia da cirurgia','Técnica para osso fraco','Implante de cerâmica'], correct:1, explain:'Na carga imediata, o paciente sai da cirurgia com dentes provisórios — grande diferencial de venda!' },
+  { q:'Comparando implante vs. prótese removível, a força mastigatória do implante é:', opts:['20% menor','Igual','100% da força natural','Depende da marca'], correct:2, explain:'O implante restaura 100% da força mastigatória, enquanto a prótese removível reduz em 40–60%.' },
+  { q:'Qual a durabilidade esperada de um implante com boa higiene?', opts:['2 a 3 anos','5 a 8 anos','Pode durar décadas','Máximo 10 anos'], correct:2, explain:'Com higiene adequada, um implante pode durar décadas — é o argumento de custo-benefício no longo prazo.' },
+];
+
+// ─────────────────────────────────────────────
+// ANATOMY DATA
+// ─────────────────────────────────────────────
+const ANATOMY_STEPS = [
+  { question:'Qual parte é a prótese visível, idêntica ao dente natural?', answer:'Coroa', options:['Coroa','Pilar','Corpo','Osso Alveolar'] },
+  { question:'Qual componente conecta a coroa ao implante e distribui a força?', answer:'Pilar (Abutment)', options:['Coroa','Pilar (Abutment)','Corpo do Implante','Gengiva'] },
+  { question:'Qual é o parafuso de titânio que se funde ao osso?', answer:'Corpo do Implante', options:['Coroa','Pilar (Abutment)','Corpo do Implante','Osseointegração'] },
+  { question:'O que é estimulado pela mastigação e preserva o volume facial?', answer:'Osso Alveolar', options:['Gengiva','Pilar (Abutment)','Osso Alveolar','Titânio'] },
+];
+
+// ─────────────────────────────────────────────
+// ROLEPLAY DATA
+// ─────────────────────────────────────────────
+const ROLEPLAY_CASES = [
+  {
+    patient:'Sr. Roberto, 52 anos',
+    objection:'❝ "Tá muito caro esse implante. Vi mais barato em outra clínica." ❞',
+    question:'Qual a melhor resposta?',
+    opts:[
+      { text:'"Pode ser, mas aqui a qualidade é melhor." — Genérica, sem argumentos concretos.', type:'bad' },
+      { text:'"Você sabe qual marca de implante eles usam? Tem garantia? Aqui usamos marca certificada com rastreabilidade total — seu investimento está protegido."', type:'best' },
+      { text:'"Temos parcelamento, posso ajudar com isso." — Pula para preço sem explorar o valor.', type:'ok-opt' },
+      { text:'"Infelizmente não conseguimos abaixar o preço." — Encerra o diálogo.', type:'bad' },
+    ],
+    feedback:{ best:'Perfeito! Você diferenciou pelo valor real, não pelo preço. Explorar marca e garantia é poderoso.', ok:'Parcelamento ajuda, mas você pulou a objeção de valor. Explore a qualidade primeiro.', bad:'Essa resposta não convence e pode perder o paciente.' }
+  },
+  {
+    patient:'Dra. Carla, 38 anos',
+    objection:'❝ "Preciso pensar... vou conversar com meu marido antes." ❞',
+    question:'Como você responde?',
+    opts:[
+      { text:'"Claro, sem problemas! Quando quiser é só me chamar."', type:'ok-opt' },
+      { text:'"Entendo! Ficou alguma dúvida sobre o tratamento? Posso preparar um resumo para você mostrar a ele. E posso reservar essa condição especial até sexta."', type:'best' },
+      { text:'"Hoje é o último dia com esse preço, amanhã muda." — Pressão falsa.', type:'bad' },
+      { text:'"Acho que você já pode decidir sozinha, o valor fala por si."', type:'bad' },
+    ],
+    feedback:{ best:'Excelente! Você manteve o diálogo aberto, ofereceu ajuda e criou urgência real sem pressão.', ok:'Educado, mas você deixou a decisão sem ancoragem — sem resumo, sem prazo, sem próximo passo.', bad:'Pressão falsa ou julgamento destroem a confiança do paciente.' }
+  },
+  {
+    patient:'Joana, 29 anos',
+    objection:'❝ "Tenho muito medo da cirurgia... deve doer muito." ❞',
+    question:'Qual abordagem é mais eficaz?',
+    opts:[
+      { text:'"Não precisa ter medo, é simples." — Minimiza o sentimento.', type:'bad' },
+      { text:'"A cirurgia dói sim, mas é rápida." — Confirma o medo.', type:'bad' },
+      { text:'"Esse medo é super comum. A anestesia local é eficaz — a maioria dos nossos pacientes diz que foi mais tranquilo do que esperava. Posso te mostrar depoimentos de pessoas que sentiram o mesmo?"', type:'best' },
+      { text:'"Posso dar um calmante antes." — Promessa sem avaliação médica.', type:'bad' },
+    ],
+    feedback:{ best:'Muito bem! Você validou o sentimento, apresentou evidência social e ofereceu uma próxima ação concreta.', ok:'', bad:'Minimizar ou confirmar o medo sem solução afasta o paciente.' }
+  },
+  {
+    patient:'Sr. Antônio, 61 anos',
+    objection:'❝ "Mas vale a pena com minha idade?" ❞',
+    question:'Como você apresenta o valor?',
+    opts:[
+      { text:'"Depende, mas normalmente sim."', type:'ok-opt' },
+      { text:'"Na sua idade é arriscado, melhor uma prótese." — Desqualifica o paciente.', type:'bad' },
+      { text:'"Implante não tem limite de idade — o que importa é a saúde óssea. Com um implante, o senhor vai mastigar com 100% da força, preservar o osso e ter qualidade de vida por décadas. Cada ano que passa sem o implante acelera a perda óssea."', type:'best' },
+      { text:'"Todo mundo coloca implante, pode ir em frente."', type:'bad' },
+    ],
+    feedback:{ best:'Perfeito! Você derrubou o preconceito de idade, apresentou benefícios concretos e criou urgência real.', ok:'Resposta vaga — faltou argumentação e benefícios concretos.', bad:'Nunca sugira alternativas inferiores sem antes explorar o que o paciente realmente quer.' }
+  },
+];
+
+// ─────────────────────────────────────────────
+// FLASHCARDS DATA
+// ─────────────────────────────────────────────
+const FLASHCARDS = [
+  { front:'O que é osseointegração?', back:'Fusão do parafuso de titânio ao osso alveolar. Processo que leva 3 a 6 meses e é a base da estabilidade do implante.' },
+  { front:'O que é carga imediata?', back:'Técnica em que dentes provisórios são instalados no mesmo dia da cirurgia. Paciente sai com estética e função preservadas.' },
+  { front:'Qual é o papel do pilar (abutment)?', back:'Conecta a coroa ao implante, distribui as forças mastigatórias e serve de suporte para a prótese definitiva.' },
+  { front:'Por que o titânio é usado em implantes?', back:'É biocompatível — o organismo não rejeita. Se funde ao osso (osseointegração) e é altamente resistente à corrosão.' },
+  { front:'Como lidar com a objeção "está muito caro"?', back:'Primeiro descubra a objeção real: é o valor percebido ou o pagamento? Pergunte: "Em relação ao quê está caro?" Depois apresente valor.' },
+  { front:'Quanto um implante reduz a força mastigatória vs. prótese removível?', back:'Implante = 100% da força natural. Prótese removível = redução de 40–60%. Argumento poderoso para justificar o investimento.' },
+  { front:'Quais os 6 passos da jornada de vendas?', back:'1. Acolhimento  2. Anamnese emocional  3. Diagnóstico visual  4. Apresentação de valor  5. Manejo de objeções  6. Fechamento' },
+  { front:'O que é a técnica "Validar → Reformular → Responder"?', back:'Para objeções: valide o sentimento do paciente, reformule a objeção como uma pergunta de valor, então responda com argumentos concretos.' },
+];
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function startGame() {
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) { document.getElementById('playerName').focus(); return; }
+  player.name = name;
+  player.score = 0;
+  player.missions = {};
+  showScreen('screen-map');
+  renderMap();
+}
+
+// ─────────────────────────────────────────────
+// MAP
+// ─────────────────────────────────────────────
+function renderMap() {
+  document.getElementById('mapPlayerName').textContent = '👤 ' + player.name;
+  document.getElementById('mapScore').textContent = player.score + ' pts';
+  const doneMissions = Object.keys(player.missions).length;
+  document.getElementById('mapMissions').textContent = doneMissions + ' / 4';
+
+  const grid = document.getElementById('missionsGrid');
+  grid.innerHTML = '';
+  MISSIONS.forEach((m, i) => {
+    const done = player.missions[m.id];
+    const isRanking = m.id === 'ranking';
+    const card = document.createElement('div');
+    card.className = 'mission-card' + (done && !isRanking ? ' done' : '') + (i === doneMissions && !done ? ' active-next' : '');
+    card.innerHTML = `
+      <div class="mission-icon">${m.icon}</div>
+      <div class="mission-info">
+        <div class="mission-name">${m.name}</div>
+        <div class="mission-desc">${m.desc}</div>
+        ${m.pts > 0 ? `<div class="mission-pts">+${m.pts} pts</div>` : ''}
+      </div>
+      <div class="mission-status">${done && !isRanking ? '✅' : isRanking ? '→' : '🔒'}</div>
+    `;
+    if (!isRanking) {
+      card.addEventListener('click', () => launchMission(m));
+    } else {
+      card.querySelector('.mission-status').textContent = '→';
+      card.addEventListener('click', () => { showScreen('screen-ranking'); renderRanking(); });
+    }
+    grid.appendChild(card);
+  });
+}
+
+function launchMission(m) {
+  if (m.id === 'quiz') startQuiz();
+  else if (m.id === 'anatomy') startAnatomy();
+  else if (m.id === 'roleplay') startRoleplay();
+  else if (m.id === 'flash') startFlash();
+}
+
+function finishMission(id, pts, icon, title, desc) {
+  if (!player.missions[id]) {
+    player.missions[id] = pts;
+    player.score += pts;
+    saveScore();
+  }
+  document.getElementById('resultIcon').textContent = icon;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultPts').textContent = '+' + pts + ' pts';
+  document.getElementById('resultDesc').textContent = desc;
+  showScreen('screen-result');
+}
+
+// ─────────────────────────────────────────────
+// QUIZ MISSION
+// ─────────────────────────────────────────────
+let quizState = { idx:0, score:0, timer:null, startTime:0 };
+
+function startQuiz() {
+  quizState = { idx:0, score:0, timer:null, startTime:0 };
+  document.getElementById('quizScore').textContent = '0';
+  showScreen('screen-quiz');
+  renderQuizQuestion();
+}
+
+function renderQuizProgress() {
+  const p = document.getElementById('quizProgress');
+  p.innerHTML = QUIZ_QUESTIONS.map((_, i) => `<div class="quiz-dot ${i < quizState.idx ? 'done' : i === quizState.idx ? 'current' : ''}"></div>`).join('');
+}
+
+function renderQuizQuestion() {
+  renderQuizProgress();
+  const q = QUIZ_QUESTIONS[quizState.idx];
+  const area = document.getElementById('quizArea');
+  let timeLeft = 20;
+  quizState.startTime = Date.now();
+
+  area.innerHTML = `
+    <div class="quiz-question">
+      <div class="quiz-q-text">${q.q}</div>
+      <div class="quiz-timer">Tempo: <span id="qtimer">${timeLeft}s</span></div>
+    </div>
+    <div class="quiz-options" id="quizOpts">
+      ${q.opts.map((o,i) => `<button class="quiz-opt" onclick="answerQuiz(${i})">${o}</button>`).join('')}
+    </div>
+    <div class="quiz-feedback" id="quizFeedback"></div>
+    <button class="btn-next" id="quizNext" onclick="nextQuiz()">
+      ${quizState.idx < QUIZ_QUESTIONS.length-1 ? 'Próxima →' : 'Ver resultado →'}
+    </button>
+  `;
+
+  quizState.timer = setInterval(() => {
+    timeLeft--;
+    const el = document.getElementById('qtimer');
+    if (el) el.textContent = timeLeft + 's';
+    if (timeLeft <= 0) {
+      clearInterval(quizState.timer);
+      answerQuiz(-1);
+    }
+  }, 1000);
+}
+
+function answerQuiz(chosen) {
+  clearInterval(quizState.timer);
+  const q = QUIZ_QUESTIONS[quizState.idx];
+  const elapsed = (Date.now() - quizState.startTime) / 1000;
+  const opts = document.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.disabled = true);
+
+  const fb = document.getElementById('quizFeedback');
+  if (chosen === q.correct) {
+    const bonus = Math.max(0, Math.floor((20 - elapsed) * 5));
+    const earned = 20 + bonus;
+    quizState.score += earned;
+    opts[chosen].classList.add('correct');
+    fb.className = 'quiz-feedback show ok';
+    fb.textContent = `✅ Correto! +${earned} pts (${bonus > 0 ? 'bônus de velocidade: +'+bonus : 'sem bônus'}) — ${q.explain}`;
+  } else {
+    if (chosen >= 0) opts[chosen].classList.add('wrong');
+    opts[q.correct].classList.add('correct');
+    fb.className = 'quiz-feedback show nok';
+    fb.textContent = `❌ Incorreto. Resposta: ${q.opts[q.correct]} — ${q.explain}`;
+  }
+  document.getElementById('quizScore').textContent = quizState.score;
+  document.getElementById('quizNext').classList.add('show');
+}
+
+function nextQuiz() {
+  quizState.idx++;
+  if (quizState.idx >= QUIZ_QUESTIONS.length) {
+    const total = Math.min(quizState.score, 300);
+    finishMission('quiz', total, '🧠', 'Quiz Concluído!', `Você acertou com velocidade e precisão! Score final: ${total} pts`);
+  } else {
+    renderQuizQuestion();
+  }
+}
+
+// ─────────────────────────────────────────────
+// ANATOMY MISSION
+// ─────────────────────────────────────────────
+let anatState = { idx:0, score:0 };
+
+function startAnatomy() {
+  anatState = { idx:0, score:0 };
+  document.getElementById('anatomyScore').textContent = '0';
+  showScreen('screen-anatomy');
+  renderAnatomyStep();
+}
+
+function renderAnatomyStep() {
+  const step = ANATOMY_STEPS[anatState.idx];
+  const area = document.getElementById('anatomyArea');
+  const shuffled = [...step.options].sort(() => Math.random() - .5);
+
+  area.innerHTML = `
+    <div class="anatomy-board">
+      <div class="anatomy-question">${step.question}</div>
+      <div style="text-align:center;font-size:80px;margin:16px 0">🦷</div>
+      <div class="anatomy-parts">
+        ${shuffled.map(o => `<button class="anatomy-part" onclick="answerAnatomy('${o}', this)">${o}</button>`).join('')}
+      </div>
+      <div class="anatomy-hint" id="anatFeedback"></div>
+    </div>
+    <div class="progress-text">${anatState.idx+1} de ${ANATOMY_STEPS.length}</div>
+    <button class="btn-next" id="anatNext" onclick="nextAnatomy()">
+      ${anatState.idx < ANATOMY_STEPS.length-1 ? 'Próxima →' : 'Ver resultado →'}
+    </button>
+  `;
+}
+
+function answerAnatomy(chosen, btn) {
+  document.querySelectorAll('.anatomy-part').forEach(b => b.disabled = true);
+  const step = ANATOMY_STEPS[anatState.idx];
+  const fb = document.getElementById('anatFeedback');
+  if (chosen === step.answer) {
+    btn.classList.add('correct');
+    anatState.score += 50;
+    document.getElementById('anatomyScore').textContent = anatState.score;
+    fb.textContent = '✅ Correto! +50 pts';
+    fb.style.color = 'var(--success)';
+  } else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('.anatomy-part').forEach(b => { if (b.textContent.trim() === step.answer) b.classList.add('correct'); });
+    fb.textContent = '❌ A resposta correta era: ' + step.answer;
+    fb.style.color = 'var(--danger)';
+  }
+  document.getElementById('anatNext').classList.add('show');
+}
+
+function nextAnatomy() {
+  anatState.idx++;
+  if (anatState.idx >= ANATOMY_STEPS.length) {
+    finishMission('anatomy', anatState.score, '🦴', 'Anatomia Dominada!', `Você conhece a estrutura do implante! ${anatState.score} pts conquistados.`);
+  } else {
+    renderAnatomyStep();
+  }
+}
+
+// ─────────────────────────────────────────────
+// ROLEPLAY MISSION
+// ─────────────────────────────────────────────
+let rpState = { idx:0, score:0 };
+
+function startRoleplay() {
+  rpState = { idx:0, score:0 };
+  document.getElementById('roleplayScore').textContent = '0';
+  showScreen('screen-roleplay');
+  renderRoleplayCase();
+}
+
+function renderRoleplayCase() {
+  const c = ROLEPLAY_CASES[rpState.idx];
+  const area = document.getElementById('roleplayArea');
+  const shuffled = [...c.opts].sort(() => Math.random() - .5);
+
+  area.innerHTML = `
+    <div class="roleplay-scenario">
+      <div class="roleplay-patient">👤 ${c.patient}</div>
+      <div class="roleplay-objection">${c.objection}</div>
+    </div>
+    <div class="roleplay-q">${c.question}</div>
+    <div class="roleplay-opts" id="rpOpts">
+      ${shuffled.map((o,i) => `<button class="roleplay-opt" onclick="answerRoleplay(${i}, this, '${o.type}')">${o.text}</button>`).join('')}
+    </div>
+    <div id="rpFeedback" style="margin-top:12px;padding:12px 16px;border-radius:10px;display:none;font-size:14px;line-height:1.5"></div>
+    <div class="progress-text" style="margin-top:8px">${rpState.idx+1} de ${ROLEPLAY_CASES.length}</div>
+    <button class="btn-next" id="rpNext" onclick="nextRoleplay()">
+      ${rpState.idx < ROLEPLAY_CASES.length-1 ? 'Próximo caso →' : 'Ver resultado →'}
+    </button>
+  `;
+}
+
+function answerRoleplay(i, btn, type) {
+  document.querySelectorAll('.roleplay-opt').forEach(b => b.disabled = true);
+  const c = ROLEPLAY_CASES[rpState.idx];
+  const fb = document.getElementById('rpFeedback');
+  btn.classList.add(type);
+  let earned = 0;
+  let msg = '';
+  if (type === 'best') { earned = 60; msg = c.feedback.best; fb.style.background='#f0fff4'; fb.style.color='var(--success)'; }
+  else if (type === 'ok-opt') { earned = 30; msg = c.feedback.ok || 'Boa tentativa, mas existe uma resposta mais eficaz.'; fb.style.background='var(--accent-light)'; fb.style.color='#92400e'; }
+  else { earned = 0; msg = c.feedback.bad; fb.style.background='#fff5f5'; fb.style.color='var(--danger)'; }
+
+  rpState.score += earned;
+  document.getElementById('roleplayScore').textContent = rpState.score;
+  fb.textContent = (earned > 0 ? `+${earned} pts — ` : '') + msg;
+  fb.style.display = 'block';
+  document.getElementById('rpNext').classList.add('show');
+}
+
+function nextRoleplay() {
+  rpState.idx++;
+  if (rpState.idx >= ROLEPLAY_CASES.length) {
+    finishMission('roleplay', rpState.score, '💬', 'Vendedor Destaque!', `Você sabe contornar objeções! ${rpState.score} pts.`);
+  } else {
+    renderRoleplayCase();
+  }
+}
+
+// ─────────────────────────────────────────────
+// FLASHCARDS MISSION
+// ─────────────────────────────────────────────
+let fcState = { idx:0, score:0, known:0, flipped:false };
+
+function startFlash() {
+  fcState = { idx:0, score:0, known:0, flipped:false };
+  document.getElementById('flashScore').textContent = '0';
+  showScreen('screen-flash');
+  renderFlashCard();
+}
+
+function renderFlashCard() {
+  fcState.flipped = false;
+  const card = FLASHCARDS[fcState.idx];
+  const area = document.getElementById('flashArea');
+
+  area.innerHTML = `
+    <div class="flashcard-wrap">
+      <div class="flashcard" id="fc" onclick="flipCard()">
+        <div class="card-face card-front">
+          <p>${card.front}</p>
+          <div class="card-hint">Toque para revelar a resposta</div>
+        </div>
+        <div class="card-face card-back">
+          <p>${card.back}</p>
+          <div class="card-hint">Você sabia?</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav" style="margin-top:14px">
+      <span class="fc-counter">${fcState.idx+1} / ${FLASHCARDS.length}</span>
+    </div>
+    <div class="fc-known" id="fcKnown" style="display:none">
+      <button class="fc-know-yes" onclick="markCard(true)">✅ Sabia!</button>
+      <button class="fc-know-no" onclick="markCard(false)">❌ Não sabia</button>
+    </div>
+  `;
+}
+
+function flipCard() {
+  document.getElementById('fc').classList.toggle('flipped');
+  fcState.flipped = true;
+  document.getElementById('fcKnown').style.display = 'flex';
+}
+
+function markCard(knew) {
+  if (knew) { fcState.score += 20; fcState.known++; }
+  document.getElementById('flashScore').textContent = fcState.score;
+  fcState.idx++;
+  if (fcState.idx >= FLASHCARDS.length) {
+    finishMission('flash', fcState.score, '📚', 'Flash Cards Completos!', `Você conhecia ${fcState.known} de ${FLASHCARDS.length} conceitos! ${fcState.score} pts.`);
+  } else {
+    renderFlashCard();
+  }
+}
+
+// ─────────────────────────────────────────────
+// RANKING
+// ─────────────────────────────────────────────
+function renderRanking() {
+  const list = document.getElementById('rankingList');
+  list.innerHTML = '<div class="empty-ranking" style="opacity:.5">Carregando ranking ao vivo... 🔄</div>';
+  getRanking().then(data => {
+    const medals = ['🥇','🥈','🥉'];
+    const topScore = data[0]?.score || 1;
+    if (data.length === 0) {
+      list.innerHTML = '<div class="empty-ranking">Nenhum jogador ainda. Seja o primeiro!</div>';
+      return;
+    }
+    list.innerHTML = data.map((p, i) => `
+      <div class="ranking-item ${i===0?'top1':i===1?'top2':i===2?'top3':''}">
+        <div class="ranking-pos">${medals[i] || (i+1)+'º'}</div>
+        <div style="flex:1">
+          <div class="ranking-name">${p.name}</div>
+          <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${Math.round(p.score/topScore*100)}%"></div></div>
+          <div style="font-size:12px;opacity:.6;margin-top:4px">${p.missions} missão(ões) completa(s)</div>
+        </div>
+        <div class="ranking-score">${p.score}</div>
+      </div>
+    `).join('');
+  });
+  // Live updates
+  db.ref('ranking').orderByChild('score').on('value', snap => {
+    const data = [];
+    snap.forEach(child => data.unshift(child.val()));
+    const topScore = data[0]?.score || 1;
+    const medals = ['🥇','🥈','🥉'];
+    if (data.length === 0) return;
+    list.innerHTML = data.map((p, i) => `
+      <div class="ranking-item ${i===0?'top1':i===1?'top2':i===2?'top3':''}">
+        <div class="ranking-pos">${medals[i] || (i+1)+'º'}</div>
+        <div style="flex:1">
+          <div class="ranking-name">${p.name}</div>
+          <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${Math.round(p.score/topScore*100)}%"></div></div>
+          <div style="font-size:12px;opacity:.6;margin-top:4px">${p.missions} missão(ões) completa(s)</div>
+        </div>
+        <div class="ranking-score">${p.score}</div>
+      </div>
+    `).join('');
+  });
+}
+
+// Enter key on name input
+document.getElementById('playerName').addEventListener('keydown', e => { if (e.key === 'Enter') startGame(); });
+</script>
+</body>
+</html>
